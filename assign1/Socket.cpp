@@ -20,23 +20,45 @@ Socket::Socket(const Socket& s){
 	
 }
 
-Socket::Socket(char* host, int portno) {
-	this->fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (this->fd < 0){ 
-		throw std::runtime_error("Error opening socket");
-	} else {
-		memset(&this->addr, '0', sizeof(this->addr));
-		this->addr.sin_family = AF_INET;
-		this->addr.sin_port = htons(portno);
-		struct hostent* server;
-		server = gethostbyname(host);
-		if (server == NULL) { 
-			throw std::runtime_error("Error finding host");
-		} 
-		memcpy(&this->addr.sin_addr.s_addr, server->h_addr, server->h_length);
-		if (connect(this->fd, (sockaddr *) &this->addr, sizeof(this->addr)) < 0){
-			throw std::runtime_error("Error connecting to host");
+Socket::Socket(char* host, int portno, proto p) {
+	memset(&this->addr, '0', sizeof(this->addr));
+	this->addr.sin_family = AF_INET;
+	this->addr.sin_port = htons(portno);
+	struct hostent* server;
+	server = gethostbyname(host);
+	socklen_t len;
+	if (server == NULL) {
+		throw std::runtime_error("Error finding host");
+	}
+	memcpy(&this->addr.sin_addr.s_addr, server->h_addr, server->h_length);
+	if (p == TCP) {
+		this->fd = socket(AF_INET, SOCK_STREAM, 0);
+		if (this->fd < 0){ 
+			throw std::runtime_error("Error opening socket");
+		} else {
+			if (connect(this->fd, (sockaddr *) &this->addr, sizeof(this->addr)) < 0){
+				throw std::runtime_error("Error connecting to host");
+			}
 		}
+	} else {
+		this->fd = socket(AF_INET, SOCK_DGRAM, 0);
+		if (this->fd < 0) {
+			throw std::runtime_error("Error opening socket");
+		}
+		uint16_t p_size = 1024;
+		sendto(this->fd, &p_size, sizeof(uint16_t), MSG_CONFIRM,
+			(struct sockaddr*) &this->addr, sizeof(this->addr)	
+		);
+		char confirm[7];
+		memset(&confirm, '\0', sizeof(confirm));
+		std::cout <<"IP: " + this->getIP() << std::endl;
+		recvfrom(this->fd, &confirm, sizeof(confirm), 
+			MSG_WAITALL, (sockaddr*) &this->addr, 
+			&len
+		);
+		std::string con(confirm);
+		std::cout << con << std::endl;
+		if (con != "confirm") throw std::runtime_error("Error connecting to host"); 
 	}
 }
 

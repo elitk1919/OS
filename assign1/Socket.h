@@ -14,10 +14,25 @@
  *      overloaded operator<< for string messages
 **/
  
+typedef enum proto {
+	TCP,
+	UDP
+} proto;
 class Socket	{
 	struct sockaddr_in addr;
 	int fd;
+	
 public:
+	uint16_t udp_p_size;
+
+	template <int n>
+	struct UDP_Packet {
+		int index;
+		int total;
+		unsigned char data[n];
+	};
+
+	typedef struct UDP_PACKET UDP_PACKET;	
 	
 	typedef enum status: unsigned char { 
 		NOSTATUS,
@@ -35,7 +50,7 @@ public:
 	//Socket();
 	Socket(int sock, sockaddr_in add);
 	Socket(const Socket&);
-	Socket(char* host, int portno);
+	Socket(char* host, int portno, proto p);
 	~Socket();
 	std::string getIP();
 	std::string readstring();

@@ -7,6 +7,12 @@ server: serv_main.cpp blowfish.o util.o ServerSocket.o
 client: cli_main.cpp blowfish.o util.o Socket.o
 	${CC} ${CFLAGS} cli_main.cpp blowfish.o Socket.o util.o -o client
 
+ft_server: ft_serv.cpp ServerSocket.o Socket.o
+	${CC} ${CFLAGS} ft_serv.cpp ServerSocker.o Socket.o -o ft_server	
+
+ft_client: ft_cli.cpp Socket.o
+	${CC} ${CFLAGS} ft_cli.cpp Socket.o -o ft_client
+
 main: main.cpp blowfish.o
 	${CC} ${CFLAGS} main.cpp blowfish.o -o main
 

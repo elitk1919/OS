@@ -10,6 +10,9 @@ client: cli_main.cpp blowfish.o util.o Socket.o
 main: main.cpp blowfish.o
 	${CC} ${CFLAGS} main.cpp blowfish.o -o main
 
+socket_test: socket_test.cpp ServerSocket.o Socket.o
+	${CC} ${CFLAGS} socket_test.cpp ServerSocket.o Socket.o -o socket_test
+
 util.o: util.cpp util.h
 	${CC} ${CFLAGS} -c util.cpp
 

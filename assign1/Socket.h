@@ -1,3 +1,7 @@
+#define DEBUG
+#define WRITE_SIZE 256
+
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -19,17 +23,13 @@ class Socket	{
 	int fd;
 public:
 	
+
+
 	typedef enum status: unsigned char { 
 		NOSTATUS,
 		WAIT, 
 		READY
 	} status;
-	
-	typedef struct packet {
-		void *addr;
-		int num;
-		
-	}packet;
 	
 
 	//Socket();
@@ -45,6 +45,9 @@ public:
 	int getfd();
 	void setstatus(status s);
 	int queue(); //returns the priority queue size (OOB bits in buffer)
+    bool hasqueue();
+    bool writeFile(std::string);
+    void readFile(std::string);
 
 /**
  *                  Templates
@@ -60,17 +63,17 @@ public:
 	template <typename T>
 	bool writebytes(T data, int num = 1){ 
 		//std::cout << "from write: " << data << std::endl;
-		int res = send(this->fd, &data, sizeof(T), 0);
+		int res = send(this->fd, &data, sizeof(T) * num, 0);
 		//else res = send(this->fd, (void*)data, num * sizeof(T), 0); // if n is greater than 1 than data is already a pointer
 		if (res < 0) return false;
 		else return true;
 	}
 
 	template <typename T>
-	T readbytes(int n_elements = 1){
+	T readbytes(int num = 1){
 		//std::cout << "Attempting to read " << sizeof(T) * n_elements << " bytes" << std::endl;
 		T data;
-		int res = recv(this->fd, &data, sizeof(T), 0);
+		int res = recv(this->fd, &data, sizeof(T)*num, 0);
 		if (res < 0) std::cout << "Error on read" << std::endl;
 		return data;
 	}

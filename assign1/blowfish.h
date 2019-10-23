@@ -25,7 +25,7 @@ class BLOWFISH{
         BLOWFISH(byte* cipherKey, int keylength);
 
         //TODO: string encryption functions -> base64
-        std::string Encrypt_CBC(std::string data);
+        std::string Encrypt_CBC(std::string data, int length);
         byte* Encrypt_CBC(byte* data, int length, int* newlength);
         byte* Encrypt_ECB(byte* data, int length, int* newlength);
         void Encrypt_Block(byte* block, int offset = 0);

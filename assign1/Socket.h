@@ -49,6 +49,8 @@ public:
     bool hasqueue();
     bool writeFile(std::string);
     bool readFile(std::string);
+    void sendbytes(char*, int);
+    char* getbytes(char*, int);
 
 /**
  *                  Templates

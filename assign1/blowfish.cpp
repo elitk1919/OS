@@ -56,11 +56,11 @@ BLOWFISH::Decrypt_CBC (byte * data, int length, int *newlength)
   return Crypt_CBC (data, length, newlength, &BLOWFISH::Decrypt_Block, true);
 }
 
-std::string BLOWFISH::Encrypt_CBC (std::string data)
+std::string BLOWFISH::Encrypt_CBC (std::string data, int length)
 {
   byte *
-    binaryData = new byte[data.length ()];
-  for (int i = 0; i < data.length (); i++)
+    binaryData = new byte[length];
+  for (int i = 0; i < length; i++)
     binaryData[i] = data[i];
   int
     newlen = 0;

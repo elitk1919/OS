@@ -55,6 +55,15 @@ bool Socket::hasqueue() {
     return !this->queue() == 0;
 }
 
+void Socket::sendbytes(char* bytes, int size) {
+    send(this->fd, &bytes, size, 0);
+}
+
+char* Socket::getbytes(char* rec, int size) {
+    recv(this->fd, &rec, size, 0);
+    return rec;
+}
+
 int Socket::getfd(){
 	return this->fd;
 }

@@ -207,6 +207,9 @@ bool Socket::readFile(std::string fname) {
     // I changed to to uint8, it's the same size as a char and it works
     // but now I'm scared to change it back. If it aint broke dont fix it
     //               ¯\_(ツ)_/¯
+    //                    |
+    //                    |
+    //                   / \ 
     
 #ifdef DEBUG 
     std::cout << "Expecting " << fsize << std::endl; 

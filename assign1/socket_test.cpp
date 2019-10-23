@@ -117,17 +117,19 @@ int main(int argc, char* argv[]) {
         cout << sizeof(sample);
     } else {
         string arg1 = argv[1];
-        if (arg1 == "client") { 
+        if (arg1 == "client") {
+            string file = argv[3]; 
             Socket so(argv[2], 9420);
             cout << "Client socket opened" << endl;
-            so.readFile("newfile.txt");
+            so.readFile(file);
         }
         if (arg1 == "server") {
+            string file = argv[2];
             cout << "ServerSocket opened" << endl;
             ServerSocket ss(9420);
             Socket so = ss.acceptCli();
             cout << "sending file..." << endl;
-            so.writeFile("Socket.o");
+            so.writeFile(file);
             cout << "file sent" << endl;
 
         }

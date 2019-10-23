@@ -1,5 +1,5 @@
 #define DEBUG
-#define WRITE_SIZE 256
+#define WRITE_SIZE 8192
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -25,8 +25,9 @@ public:
 	
 
 
-	typedef enum status: unsigned char { 
-		NOSTATUS,
+	typedef enum status { //Constant socket socket status 
+		FTP_INIT,
+        FTP_CLOSE,
 		WAIT, 
 		READY
 	} status;
@@ -40,14 +41,14 @@ public:
 	std::string getIP();
 	std::string readstring();
 	Socket& operator<< (std::string s);
-	status getstatus();
+	//status getstatus();
 	bool connected();
 	int getfd();
 	void setstatus(status s);
 	int queue(); //returns the priority queue size (OOB bits in buffer)
     bool hasqueue();
     bool writeFile(std::string);
-    void readFile(std::string);
+    bool readFile(std::string);
 
 /**
  *                  Templates

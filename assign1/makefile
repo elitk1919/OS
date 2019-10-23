@@ -1,3 +1,5 @@
+MAKEFLAGS += -r
+
 CC=g++
 CFLAGS=--std=c++11
 
@@ -26,4 +28,28 @@ Socket.o: Socket.cpp Socket.h
 	${CC} ${CFLAGS} -c Socket.cpp
 
 clean: 
-	rm *.o 
+	rm *.o
+
+/tmp/4G:
+	dd if=/dev/urandom of=/tmp/4G bs=500M count=8
+
+/tmp/8G:
+	dd if=/dev/urandom of=/tmp/8G bs=500M count=16
+
+/tmp/16G:
+	dd if=/dev/urandom of=/tmp/16G bs=500M count=32
+
+/tmp/32G:
+	dd if=/dev/urandom of=/tmp/32G bs=500M count=64
+
+/tmp/64G:
+	dd if=/dev/urandom of=/tmp/32G bs=500M count=128
+
+%g: /tmp/%G
+	
+randfiles: 4g 8g 16g 32g
+
+rm%g:
+	rm -f /tmp/$*G
+	
+rmrandfiles: rm4g rm8g rm16g rm32g	 

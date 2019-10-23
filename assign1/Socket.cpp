@@ -2,6 +2,9 @@
 #include "Socket.h"
 #include <string>
 #include <fstream>
+#ifdef DEBUG
+#include <chrono>
+#endif
 
 bool Socket::connected() {
 	char trash = 't';
@@ -87,14 +90,14 @@ void Socket::setstatus(status s){ //ends OOB status message
 	int res = send(this->fd, &s, 1, MSG_OOB);
 	if (res < 0) throw std::runtime_error("Error setting status");
 }
-
+/*
 Socket::status Socket::getstatus(){ //for recieving an OOB status message, can be send while the stream is full with priority
 	unsigned char buf;
 	int res = recv(this->fd, &buf, 1, MSG_OOB);
 	if (res < 0) return Socket::NOSTATUS;
 	return (Socket::status) buf;
 }
-
+*/
 Socket& Socket::operator<< (std::string s){ // for writing strings to the socket
 	write(this->fd, s.c_str(), s.length());
     //write(this->fd, '\0', 1);
@@ -102,31 +105,46 @@ Socket& Socket::operator<< (std::string s){ // for writing strings to the socket
 }
 
 bool Socket::writeFile(std::string fname) {
-    enum sock_stat {
-        RECV_READY,
-        SEND_WRITING,
-        SEND_WAITING
-    };
-
-    std::ifstream inFile;
-    inFile.open(fname, std::ios::binary);
+    std::ifstream inFile(fname, std::ios::binary);
     inFile.seekg(0, std::ios::end); // go to end of file got byte count
-    uint16_t fsize = inFile.tellg();
-    inFile.seekg(0, std::ios::beg); // to back to beginning
-    
-    this->writebytes<uint16_t>(fsize);
-    if (this->readbytes<uint8_t>() != RECV_READY)
-        return false;
-    
+    uint64_t fsize = inFile.tellg();
+#ifdef DEBUG
+    std::cout << fsize << std::endl;
+#endif
     char* bytes = new char[fsize];
-    inFile.read(bytes, fsize);
-
+    inFile.seekg(0, std::ios::beg); // to back to beginning
+    inFile.read(bytes, fsize); // read file into array
+    inFile.close();
+#ifdef DEBUG
+    auto start = std::chrono::high_resolution_clock::now(); 
+#endif
+    this->writebytes<uint8_t>(FTP_INIT); // send protocol init message
+    if (this->readbytes<uint8_t>() != FTP_INIT) { //check for handshake
+#ifdef DEBUG
+        std::cout << "Exiting now" << std::endl; //return false on bad handshake
+#endif
+        return false;
+    } else {
+        std::cout << "Handshake complete" << std::endl;
+    }    
+    this->writebytes<uint64_t>(fsize); //write file size to client 
+    uint8_t cli_res = this->readbytes<uint8_t>(); //wait for response
     int outof = fsize / WRITE_SIZE;
+#ifdef DEBUG
+    std::cout << "Will send " << outof << "packets" << std::endl;
+#endif
     int sent = 0;
     if (fsize % WRITE_SIZE != 0) outof++;
 
-    for (int i = 0; i < fsize; i++) {
+    for (int i = 0; i < fsize; i++) { //iterate through file size 
         if (i % WRITE_SIZE == 0) {
+            /* 
+             * if iterator is divisible by file size start 
+             * calculating the size of the message.
+             * If there is less than WRITE_SIZE left 
+             * in the file, set message size to the 
+             * amount left in the file 
+             */
             int size = 0;
             if (fsize - i < WRITE_SIZE) {
                 size = fsize % WRITE_SIZE;
@@ -134,74 +152,115 @@ bool Socket::writeFile(std::string fname) {
                 size = WRITE_SIZE;
             }
 #ifdef DEBUG
-            std::cout << "sending pkt" << sent << " size " << size << std::endl;
+    //        std::cout << "sending pkt " << sent << " size " << size << std::endl;
+    //        std::cout << "outof " << outof << std::endl;
 #endif
-            char chunk[size];
-            memcpy(&chunk, &bytes[i], size);
-            std::cout << chunk << std::endl;
-            send(this->fd, &chunk, size, 0);
-            if (sent == 10) {
-                while (!this->hasqueue());
-                uint8_t cli_res = this->readbytes<uint8_t>();
+            char chunk[size]; //initialize an array to previously set size var
+            memcpy(&chunk, &bytes[i], size); //copy data array at i into chunk
+            send(this->fd, &chunk, size, 0); // send over socket
+            if (sent == 10) { 
+                /*
+                 * if 10 packets have been sent wait for reciever to
+                 * signal for more packets to prevent socket buffer 
+                 * from overflowing 
+                 */
+#ifdef DEBUG
+                std::cout << "waiting for ready..";
+#endif
+                while (!this->hasqueue()); //block until sender sends
+                uint8_t cli_res = this->readbytes<uint8_t>(); // read sent, could be used for error checking
+#ifdef DEBUG
+                std::cout << "ready recieved" << std::endl;
+#endif
+
             }
             sent++;
 
         }
-        //while(!this->hasqueue());
-        //uint8_t cli_resp = this->readbytes<uint8_t>();
+        //delete[] bytes; // free byte array
     }
-
+#ifdef DEBUG
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "File transfer complete in "; 
+    double time = (double) std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    double elapsed = time / 1000000;
+    std::cout << elapsed << "seconds" <<std::endl;
+#endif
+    while(this->readbytes<uint8_t>() != FTP_CLOSE); 
+    /*
+     * wait for FTP_CLOSE message. This stops the program
+     * from potentially exiting early, closing the socket
+     */
+    delete[] bytes;
+    return true;
 }
 
-void Socket::readFile(std::string fname) {
-    enum sock_stat {
-        RECV_READY,
-        SEND_WRITING,
-        SEND_WAITING,
-        TRANSFER_COMPLETE
-    };
+bool Socket::readFile(std::string fname) {
+    
+    if (this->readbytes<uint8_t>() != FTP_INIT) return false; //return false on bad handshake
+    else this->writebytes<uint8_t>(FTP_INIT);//write proto back st sender
 
-    uint16_t init = this->readbytes<uint16_t>();
+    uint64_t fsize = this->readbytes<uint64_t>(); // read size and send server confirmation
+    this->writebytes<uint8_t>(READY);
 
-    int fsize = init;
-
-    uint8_t* arr = new uint8_t[fsize];
+    uint8_t* arr = new uint8_t[fsize]; //array to store revieved bytes
+    // I changed to to uint8, it's the same size as a char and it works
+    // but now I'm scared to change it back. If it aint broke dont fix it
+    //               ¯\_(ツ)_/¯
     
 #ifdef DEBUG 
     std::cout << "Expecting " << fsize << std::endl; 
-#endif
-    this->writebytes<uint8_t>(RECV_READY);
-#ifdef DEBUG
     std::cout << "handshake established" << std::endl;
 #endif
     bool allsent = false;
-    //int arri = 0;
-    int bytes_recvd = 0;
-    while(!allsent) {
-        while(this->hasqueue()) {
-            uint8_t c = 0;
-            recv(this->fd, &c, 1, 0);
-            std::cout << c << std::endl; 
-            arr[bytes_recvd] = c;
-            bytes_recvd++;
-            //arri += strlen(p.data);
-            if (bytes_recvd == fsize - 1) {
+    int bytes_recvd = 0; // initialize counter for recieved bytes
+    while(!allsent) { // until every byte is sent
+        while(this->hasqueue()) { // while reader has data to read
+            char chunk[WRITE_SIZE]; // create char array of WRITE_SIZE
+            int numRead = recv(this->fd, &chunk, WRITE_SIZE, MSG_DONTWAIT); //read into char array
+            /*
+             * If there are less than WRITE_SIZE bytes to read,
+             * MSG_DONTWAIT will tell the socket to only read what is 
+             * available to read. numRead will be the amount of bytes read
+             */
+#ifdef DEBUG
+            std::cout << numRead << " bytes read" << std::endl;
+#endif
+            if (numRead != -1) {
+                /*
+                 * if recv returned no error, copy the bytes 
+                 * read into output array.
+                 * If we want to possibly catch bugs 
+                 * we can add an else but it seems pretty
+                 * stable at the moment
+                 */ 
+                memcpy(&arr[bytes_recvd], &chunk, numRead);
+                bytes_recvd += numRead; // add numRead to total bytes recieved
+            }
+            if (bytes_recvd >= fsize - 1) { // if all bytes have been recieved, kill outer loop
                 allsent = true;
             }
         }
-        std::cout << "sender has no queue" << std::endl;
-        this->writebytes<uint8_t>(RECV_READY);
+#ifdef DEBUG
+        std::cout << "sender has no queue\nsending ready" << std::endl;
+        std::cout << bytes_recvd << " out of " << fsize << std::endl;
+#endif  
+        this->writebytes<uint8_t>(READY);
+#ifdef DEBUG
+        std::cout << "ready sent" << std::endl;
+#endif
         while (!allsent && !this->hasqueue());
+#ifdef DEBUG
+        std::cout << "Sender has queue" << std::endl;
+#endif
     }
-    //this->writebytes<uint8_t>(TRANSFER_COMPLETE);
-    std::cout << arr;
+    this->writebytes<uint8_t>(FTP_CLOSE);
     std::cout << "all packets sent" << std::endl;
-    std::ofstream out;
-    out.open(fname, std::ios::binary);
-    //out << arr;
-    out.write((char*)arr, bytes_recvd);
-    out.close();
-
+    std::ofstream out(fname, std::ios::binary); //open file in binary mode
+    out.write((char*)arr, bytes_recvd); // write output array
+    out.close(); // close that shit
+    delete[] arr;
+    return true;
 }
 
 Socket::~Socket(){

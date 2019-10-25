@@ -21,7 +21,7 @@ util.o: util.cpp util.h
 blowfish.o: blowfish.cpp blowfish.h
 	${CC} ${CFLAGS} -c blowfish.cpp
 
-ServerSocket.o: ServerSocket.cpp ServerSocket.h Socket.o
+ServerSocket.o: ServerSocket.cpp ServerSocket.h Socket.o util.o
 	${CC} ${CFLAGS} -c ServerSocket.cpp Socket.o
 
 Socket.o: Socket.cpp Socket.h
@@ -58,7 +58,7 @@ clean:
 	dd if=/dev/urandom of=/tmp/32G bs=500M count=64
 
 /tmp/64G:
-	dd if=/dev/urandom of=/tmp/32G bs=500M count=128
+	dd if=/dev/urandom of=/tmp/64G bs=500M count=128
 
 %g: /tmp/%G
 	

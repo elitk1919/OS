@@ -1,68 +1,35 @@
-#ifndef BLOWFISH_INCLUDED
-#define BLOWFISH_INCLUDED
+//
+// Blowfish C++ implementation
+//
+// CC0 - PUBLIC DOMAIN
+// This work is free of known copyright restrictions.
+// http://creativecommons.org/publicdomain/zero/1.0/
+//
 
-#include <string>
+#pragma once
 
-//headers needed for the CSPRNG
-#ifdef _WIN32
-    #include <Windows.h>
-    #include <Wincrypt.h>
-#else
-    #include <fstream> //for reading from /dev/urandom on *nix systems
-#endif
+#ifndef __blowfish__
+#define __blowfish__
 
-typedef unsigned char byte;
+#include <stdint.h>
+#include <cstddef>
+#include <vector>
 
-class BLOWFISH{
+class Blowfish {
+public:
+  Blowfish(const std::vector<char> &key);
+  std::vector<char> Encrypt(const std::vector<char> &src) const;
+  std::vector<char> Decrypt(const std::vector<char> &src) const;
 
-    //Although there is no successful cryptanalysis of the 16 round version, a higher number of rounds generally means more security.
-    //STANDARD: 16
-    //MAXIMUM: 256
-    //**MUST be an EVEN number**
-    #define ROUNDS 16
-    public:
-        BLOWFISH(std::string hexKey);
-        BLOWFISH(byte* cipherKey, int keylength);
+private:
+  void SetKey(const char *key, size_t byte_length);
+  void EncryptBlock(uint32_t *left, uint32_t *right) const;
+  void DecryptBlock(uint32_t *left, uint32_t *right) const;
+  uint32_t Feistel(uint32_t value) const;
 
-        //TODO: string encryption functions -> base64
-        std::string Encrypt_CBC(std::string data, int length);
-        byte* Encrypt_CBC(byte* data, int length, int* newlength);
-        byte* Encrypt_ECB(byte* data, int length, int* newlength);
-        void Encrypt_Block(byte* block, int offset = 0);
-
-        std::string Decrypt_CBC(std::string data);
-        byte* Decrypt_CBC(byte* data, int length, int* newlength);
-        byte* Decrypt_ECB(byte* data, int length, int* newlength);
-        void Decrypt_Block(byte* block, int offset = 0);
-
-        void SetRandomIV();
-        void SetIV(byte* newIV);
-        byte* GetIV();
-        bool IvSet;
-
-    protected:
-        void SetupKey(byte* cipherKey, int length);
-        void encipher();
-        void decipher();
-        unsigned int round(unsigned int a, unsigned int b, unsigned int n);
-        void setblock(byte* block, int offset);
-        void getblock(byte* block, int offset);
-        static unsigned int p[];
-        static unsigned int s0[];
-        static unsigned int s1[];
-        static unsigned int s2[];
-        static unsigned int s3[];
-
-        unsigned int xl_par;
-        unsigned int xr_par;
-
-        byte IV[8];
-
-        byte* Crypt_ECB(byte* data, int length, int* newlength, void (BLOWFISH::*CryptBlock)(byte*, int offset), bool decrypt);
-        byte* Crypt_CBC(byte* data, int length, int* newlength, void (BLOWFISH::*CryptBlock)(byte*, int offset), bool decrypt);
-        byte* padData(byte* data, int length, int* paddedLength, bool decrypt, bool IvSpace);
-        int findPaddingEnd(byte* data, int length);
-        int hex2dec(char hex);
-        std::string byteToHex(unsigned char x);
+private:
+  uint32_t pary_[18];
+  uint32_t sbox_[4][256];
 };
-#endif
+
+#endif /* defined(__blowfish__) */

@@ -4,6 +4,31 @@
 #endif
 using namespace std;
 
+std::vector<char> util::file2Vec(std::string filename) {
+    ifstream in(filename, ios::binary);
+    in.seekg(0, ios::end);
+    uint64_t size = in.tellg();
+    in.seekg(0, ios::beg);
+    char* data = new char[size];
+    vector<char> v;
+    in.close();
+    for (int i = 0; i < size; i++) {
+        v.push_back(data[i]);
+    }
+    delete[] data; 
+    return v;
+}
+
+void util::vec2File(std::vector<char> out, std::string fname) {
+    ofstream fout(fname, ios::binary);
+    //size_t size = out.size();
+    //char* data = new data[size]
+    //memcpy(&data, '\0', size);
+    //data = out.data();
+    for (char &c : out) fout.write(&c, 1);
+    fout.close();
+}
+
 std::string util::str2Hex(std::string s) {
     return util::str2Hex(s.data(), s.length());
 }
@@ -13,6 +38,32 @@ std::vector<char> util::str2Vec(std::string s){
     vector<char> v;
     for (char& c : s)v.push_back(c);
     return v;
+}
+
+std::vector<char> util::long2Vec(unsigned long nonce) {
+    vector<char> v;
+    union {
+        unsigned long l;
+        char bits[sizeof(unsigned long)];
+    };
+    l = nonce;
+
+    for (int i = 0; i < sizeof(unsigned long); i++)
+        v.push_back(bits[i]);
+    
+    return v;
+}
+
+long util::vec2Long(vector<char> v) {
+    union {
+        long l;
+        char bits[sizeof(long)];
+    };
+
+    //const char* vecdata = v.data();
+
+    memcpy(&bits, v.data(), sizeof(long));
+    return l;
 }
 
 std::string util::vec2Str(std::vector<char> v) {
@@ -53,6 +104,11 @@ std::string util::hex2Str(const std::string& input) {
             output.push_back(((p - lut) << 4) | (q - lut));
         }
     return output;
+}
+
+unsigned long util::generateNonce() {
+    srand(time(NULL));
+    return rand();
 }
 
 long util::f(long nonce) {

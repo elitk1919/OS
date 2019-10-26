@@ -310,7 +310,9 @@ std::vector<char> Blowfish::Encrypt(const std::vector<char> &src) const {
   }
 
   for (size_t i = 0; i < padding_length; ++i) {
-    dst.push_back(static_cast<char>(padding_length));
+    //std::cout << "pushing" <<   std::endl;
+    dst.push_back((char) padding_length);
+    //std::cout << "pushed" << std::endl;
   }
 
   for (int i = 0; i < dst.size() / sizeof(uint64_t); ++i) {
@@ -342,7 +344,7 @@ void Blowfish::EncryptBlock(uint32_t *left, uint32_t *right) const {
     *right ^= Feistel(*left);
     std::swap(*left, *right);
   }
-
+  //std::cout << "swapping" << std::endl;
   std::swap(*left, *right);
 
   *right ^= pary_[16];

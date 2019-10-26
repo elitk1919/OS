@@ -11,6 +11,7 @@
 #ifndef __blowfish__
 #define __blowfish__
 
+#include <iostream>
 #include <stdint.h>
 #include <cstddef>
 #include <vector>

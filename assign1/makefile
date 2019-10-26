@@ -19,7 +19,7 @@ util.o: util.cpp util.h
 	${CC} ${CFLAGS} -c util.cpp
 
 blowfish.o: blowfish.cpp blowfish.h
-	${CC} ${CFLAGS} -c blowfish.cpp
+	${CC} ${CFLAGS} -c blowfish.cpp -O3
 
 ServerSocket.o: ServerSocket.cpp ServerSocket.h Socket.o util.o
 	${CC} ${CFLAGS} -c ServerSocket.cpp Socket.o
@@ -46,7 +46,7 @@ clean:
 	rm *.o
 
 /tmp/4G:
-	dd if=/dev/urandom of=/tmp/4G bs=500M count=8
+	dd if=/dev/urandom of=/tmp/4G bs=500M count=8 iflag=fullblock
 
 /tmp/8G:
 	dd if=/dev/urandom of=/tmp/8G bs=500M count=16

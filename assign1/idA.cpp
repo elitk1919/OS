@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cstring>
+#include <ctime>
 #include "Socket.h"
 #include "blowfish.h"
 #include "util.h"
@@ -8,17 +10,70 @@
 using namespace std;
 using namespace util;
 
-void setvars(Socket *s, Blowfish &priv, string& sess, string& req, unsigned long n) {
-    string str = s->readstring();
-    cout << str << endl;
-    cout << vec2Str(priv.Decrypt(str2Vec(str))) << endl;
+auth_pkt* setvars(Socket* s, Blowfish &priv) {
+    auth_pkt* p = new auth_pkt;
+    union convert {
+        uint64_t l;
+        char bytes[sizeof(unsigned long)];
+    };
+
+
+    vector<char> encoded = s->readdata(); 
+    //cout << encoded.length() << endl;
+    vector<char> v_decrypted = priv.Decrypt(encoded);
+    vector<char> temp;
+    int i = 0;
+    bool appendEncoded = false; // a flag for appending the encoded message
+    for (char& c : v_decrypted) {
+        if (c == (char) REQ) {
+            cout << "setting session key" << endl;
+            const char* sesskey = vec2Str(temp).c_str(); 
+            strcpy(p->sessionkey, sesskey);
+            temp.clear(); //vector<char>();
+        } else if (c == (char) NONCE) {
+            const char* requ = vec2Str(temp).c_str();
+            strcpy(p->request, requ);
+            temp.clear();
+        } else if (c == (char) ENC) {
+            convert con;
+            cout << "uninit: " << con.l << endl;
+            temp.push_back(ENC);
+            for (int i = 0; i < sizeof(unsigned long); i++) {
+                if (temp[i] == (char) ENC) break;
+                con.bytes[i] = temp[i];
+                cout << "I: " << i << " " << temp[i] << endl;
+            }
+            memcpy(&p->nonce ,&con.l, sizeof(uint64_t));
+            temp.clear();
+            appendEncoded = true;
+
+        } else {
+            if(appendEncoded) p->encryptedkey.push_back(c ^ 0xFF);
+            temp.push_back(c ^ 0xFF);
+        }
+    }
+    return p;
 }
 
-bool validateKDC(string message, string request, unsigned long oldnonce, unsigned long newnonce) {
-    return message == request && oldnonce == newnonce;   
+bool validateKDC(auth_pkt recieved, auth_pkt &actual) {
+    if(recieved.nonce == actual.nonce) {
+#ifdef DEBUG
+        cout << "KDC authenticated" << endl;
+#endif
+        return true;
+    } else {
+#ifdef DEBUG
+        cout << "expected: " << actual.nonce << endl;
+        cout << "recieved: " << recieved.nonce << endl;
+#endif
+        return false;
+    }
 }
 
 int main(int argc, char* argv[]) {
+    
+    auth_pkt actual;
+
     string priv_key = "private"; 
     string sess_key = "";
     string request = "";
@@ -29,17 +84,35 @@ int main(int argc, char* argv[]) {
     getline(cin, priv_key);
 #endif
     Blowfish bf_private(str2Vec(priv_key));
-
-    unsigned long nonce = rand();
-    cout << nonce << endl;
-    //bf_private.SetIV(nonce);
+    unsigned long nonce = generateNonce();
+    cout << "Nonce: " << nonce << endl;
     string message = "Send session key for communication with idB";
+    strcpy(actual.request, message.c_str());
+    actual.nonce = nonce;
     (*kdc) << message;
     kdc->writebytes<char>('\0');
     kdc->writebytes<unsigned long>(nonce);
     while(!kdc->hasqueue());
-    unsigned long newnonce;
-    setvars(kdc, bf_private, sess_key, request, newnonce);
-    if(validateKDC(message, request, nonce, newnonce))
-        cout << "Session key " << sess_key;
+    auth_pkt* recieved = setvars(kdc, bf_private);
+    if (validateKDC((*recieved), actual)) {
+        cout << "\n\n\t\trecieved session: " << recieved->sessionkey << endl;
+        sess_key = recieved->sessionkey;
+    } else {
+        exit(1);
+    }
+    delete kdc;
+    
+    Blowfish ses(str2Vec(sess_key));
+    Socket* ftp = new Socket(argv[2], 9421);
+    ftp->writedata(recieved->encryptedkey);
+    //while(!ftp->hasqueue());
+    long fNonce = f(vec2Long(ses.Decrypt(ftp->readdata())));
+    ftp->writedata(ses.Encrypt(long2Vec(fNonce)));
+    cout << "serializing file..." << endl;
+    vector<char> v = file2Vec("/tmp/1G");
+    cout << "done" << endl << "Encrypting" << endl;
+    vector<char> encv = ses.Encrypt(v);
+    cout << "done" << endl;
+    ftp->writedata(encv); 
+    delete recieved;
 }

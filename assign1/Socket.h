@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <cstdint>
+#include <vector>
 /**
  *	Generic TCP socket implementation
  *  Featuring:
@@ -23,7 +24,10 @@ class Socket	{
 	int fd;
 public:
 	
-
+    struct binarystring {
+        std::string data;
+        int length;
+    };
 
 	typedef enum status { //Constant socket socket status 
 		FTP_INIT,
@@ -41,14 +45,15 @@ public:
 	std::string getIP();
 	std::string readstring();
 	Socket& operator<< (std::string s);
+    Socket& operator<< (binarystring);
 	//status getstatus();
 	bool connected();
 	int getfd();
 	void setstatus(status s);
 	int queue(); //returns the priority queue size (OOB bits in buffer)
     bool hasqueue();
-    bool writeFile(std::string);
-    bool readFile(std::string);
+    void writedata(std::vector<char>);
+    std::vector<char> readdata();
     void sendbytes(char*, int);
     char* getbytes(char*, int);
 

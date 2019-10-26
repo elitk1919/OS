@@ -113,17 +113,19 @@ Socket& Socket::operator<< (std::string s){ // for writing strings to the socket
 	return *this;
 }
 
-bool Socket::writeFile(std::string fname) {
-    std::ifstream inFile(fname, std::ios::binary);
-    inFile.seekg(0, std::ios::end); // go to end of file got byte count
-    uint64_t fsize = inFile.tellg();
+Socket& Socket::operator<< (binarystring s){ // for writing strings to the socket
+	write(this->fd, s.data.c_str(), s.length);
+    //write(this->fd, '\0', 1);
+    std::cout << s.length << std::endl;
+	return *this;
+}
+
+void Socket::writedata(std::vector<char> data) {
+    uint64_t fsize = data.size();
 #ifdef DEBUG
     std::cout << fsize << std::endl;
 #endif
-    char* bytes = new char[fsize];
-    inFile.seekg(0, std::ios::beg); // to back to beginning
-    inFile.read(bytes, fsize); // read file into array
-    inFile.close();
+    char* bytes = data.data();//new char[fsize]
 #ifdef DEBUG
     auto start = std::chrono::high_resolution_clock::now(); 
 #endif
@@ -132,19 +134,20 @@ bool Socket::writeFile(std::string fname) {
 #ifdef DEBUG
         std::cout << "Exiting now" << std::endl; //return false on bad handshake
 #endif
-        return false;
+        return;
     } else {
         std::cout << "Handshake complete" << std::endl;
     }    
     this->writebytes<uint64_t>(fsize); //write file size to client 
     uint8_t cli_res = this->readbytes<uint8_t>(); //wait for response
     int outof = fsize / WRITE_SIZE;
-#ifdef DEBUG
-    std::cout << "Will send " << outof << "packets" << std::endl;
-#endif
+
     int sent = 0;
     if (fsize % WRITE_SIZE != 0) outof++;
 
+#ifdef DEBUG
+    std::cout << "Will send " << outof << "packets" << std::endl;
+#endif
     for (int i = 0; i < fsize; i++) { //iterate through file size 
         if (i % WRITE_SIZE == 0) {
             /* 
@@ -200,19 +203,18 @@ bool Socket::writeFile(std::string fname) {
      * wait for FTP_CLOSE message. This stops the program
      * from potentially exiting early, closing the socket
      */
-    delete[] bytes;
-    return true;
+    //delete[] bytes;
 }
 
-bool Socket::readFile(std::string fname) {
+std::vector<char> Socket::readdata() {
     
-    if (this->readbytes<uint8_t>() != FTP_INIT) return false; //return false on bad handshake
+    if (this->readbytes<uint8_t>() != FTP_INIT) return std::vector<char>(); //return false on bad handshake
     else this->writebytes<uint8_t>(FTP_INIT);//write proto back st sender
 
     uint64_t fsize = this->readbytes<uint64_t>(); // read size and send server confirmation
     this->writebytes<uint8_t>(READY);
 
-    uint8_t* arr = new uint8_t[fsize]; //array to store revieved bytes
+    char* arr = new char[fsize]; //array to store revieved bytes
     // I changed to to uint8, it's the same size as a char and it works
     // but now I'm scared to change it back. If it aint broke dont fix it
     //               ¯\_(ツ)_/¯
@@ -267,15 +269,15 @@ bool Socket::readFile(std::string fname) {
 #endif
     }
     this->writebytes<uint8_t>(FTP_CLOSE);
-    std::cout << "all packets sent" << std::endl;
-    std::ofstream out(fname, std::ios::binary); //open file in binary mode
-    out.write((char*)arr, bytes_recvd); // write output array
-    out.close(); // close that shit
+    std::vector<char> v;
+    for (int i = 0; i < bytes_recvd; i++) 
+        v.push_back(arr[i]);
     delete[] arr;
-    return true;
+    return v;
 }
 
-Socket::~Socket(){
+Socket::~Socket() {
+    std::cout << "Closing socket" << std::endl;
 	close(this->fd);
 }
 

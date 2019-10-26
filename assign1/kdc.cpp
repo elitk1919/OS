@@ -7,8 +7,6 @@
 using namespace std;
 using namespace util;
 
-// SERVER!!!
-
 string parseRequest(Socket* s) {
     string request = "";
     char c = ' ';
@@ -29,9 +27,7 @@ vector<char> createResponse(Blowfish a, Blowfish b,
 
     vector<char> vec;
     vector<char> vec2; // used for B's encrypted message  
-    //int index = 0;
     for (char& c : sess) {
-        //cout << c;
         c = c ^ 0xFF;
         vec.push_back(c);
         vec2.push_back(c);
@@ -64,16 +60,7 @@ vector<char> createResponse(Blowfish a, Blowfish b,
     for (char& c : vec2) {
         vec.push_back(c ^ 0xFF);   
     }
-    //ut << "Decrypted: " << decB << endl;
     return a.Encrypt(vec);
-    //cout << enc << endl;
-    //string encA = "";
-    //cout << "FUUUCK " << a.Decrypt_CBC(enc) << endl;
-    //for (int i = 0; i < vec.size(); i++) 
-    //    encA[i] = vec[i];
-
-    //cout << enc.length() << endl;
-    //return enc;
 }
 
 int main (int argc, char* argv[]) {
@@ -94,9 +81,7 @@ int main (int argc, char* argv[]) {
 #endif
     while(!so->hasqueue());
     string req = parseRequest(so);
-    //string req = "empty";
     unsigned long nonce = so->readbytes<unsigned long>();
-    //unsigned long nonce = 0;
     cout << "Recieved from idA :" << endl;
     cout << "\t" << req << endl;
     cout << "\tnonce: " << nonce << endl;

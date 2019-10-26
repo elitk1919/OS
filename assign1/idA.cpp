@@ -18,6 +18,7 @@ auth_pkt* setvars(Socket* s, Blowfish &priv) {
     };
 
     vector<char> encoded = s->readdata(); 
+    //cout << encoded.length() << endl;
     vector<char> v_decrypted = priv.Decrypt(encoded);
     vector<char> temp;
     int i = 0;
@@ -27,7 +28,7 @@ auth_pkt* setvars(Socket* s, Blowfish &priv) {
             cout << "setting session key" << endl;
             const char* sesskey = vec2Str(temp).c_str(); 
             strcpy(p->sessionkey, sesskey);
-            temp.clear();
+            temp.clear(); //vector<char>();
         } else if (c == (char) NONCE) {
             const char* requ = vec2Str(temp).c_str();
             strcpy(p->request, requ);
@@ -103,6 +104,7 @@ int main(int argc, char* argv[]) {
     Blowfish ses(str2Vec(sess_key));
     Socket* ftp = new Socket(argv[2], 9421);
     ftp->writedata(recieved->encryptedkey);
+    //while(!ftp->hasqueue());
     long fNonce = f(vec2Long(ses.Decrypt(ftp->readdata())));
     ftp->writedata(ses.Encrypt(long2Vec(fNonce)));
     cout << "serializing file..." << endl;

@@ -1,0 +1,53 @@
+Operating Systems: Lab 1
+    kolbet0356, kittlepd8438, snyderja8768, dobiesw1431
+
+How to compile:
+   simply run the command 'make all'
+   this will make all of the required 
+   binaries and object files to run 
+   kdc, idA, and idB
+
+Running executables:
+    
+    kdc:
+        ./kdc
+        This will initiate the key distribution host. 
+        This program must be run before idA, it will 
+        block until its socket accepts a connection.
+
+        After the connection is accepted, you will be 
+        prompted for thr session key, as well as idA 
+        and idBs private keys. This program takes no 
+        command line arguments
+
+    idA:
+        ./idA <kdc hostname or IP address> <idB hostname or IP address>
+        This program is the one that inplements sends 
+        the file to idB after securing a connection. 
+        If there are no command line arguments given, 
+        the program will seg-fault, and it will throw 
+        a runtime error if you don't start the other 
+        programs first. 
+
+        After a connection to the KDC is established,
+        you will be prompted to input a private key 
+        (must match what is given to kdc) and a nonce
+        integer for authentication. After the secure
+        key distribution, and a secure connection to
+        idB is established, you will pick from a menu
+        of options. You can send a short message to 
+        test encryption, which will then prompt you
+        to enter a message, or you can send a file,
+        which will prompt you for a file name.
+        The third option is exit, which will close 
+        the program and also close idB
+        
+    idB:
+        ./idB
+        This executable is the easiest to run. Once 
+        ran, it will prompt you for a provate key, and 
+        an integer nonce value. If idA chooses to send
+        a file, you will be prompted for the name of an 
+        output file. The program exits once idA chooses
+        the exit option.
+

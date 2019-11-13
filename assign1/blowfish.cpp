@@ -35,12 +35,12 @@ union Converter32 {
   } bit_8;
 };
 
-const uint32_t initial_pary[18] = {
+static const uint32_t initial_pary[18] = {
     0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344, 0xa4093822, 0x299f31d0,
     0x082efa98, 0xec4e6c89, 0x452821e6, 0x38d01377, 0xbe5466cf, 0x34e90c6c,
     0xc0ac29b7, 0xc97c50dd, 0x3f84d5b5, 0xb5470917, 0x9216d5d9, 0x8979fb1b};
 
-const uint32_t initial_sbox[4][256] = {
+static const uint32_t initial_sbox[4][256] = {
     {0xd1310ba6, 0x98dfb5ac, 0x2ffd72db, 0xd01adfb7, 0xb8e1afed, 0x6a267e96,
      0xba7c9045, 0xf12c7f99, 0x24a19947, 0xb3916cf7, 0x0801f2e2, 0x858efc16,
      0x636920d8, 0x71574e69, 0xa458fea3, 0xf4933d7e, 0x0d95748f, 0x728eb658,
@@ -246,6 +246,8 @@ size_t PKCS5PaddingLength(const std::vector<char> &data) {
 
 }; // anonymous namespace
 
+Blowfish::Blowfish() {}
+
 Blowfish::Blowfish(const std::vector<char> &key) {
   SetKey(key.data(), key.size());
 }
@@ -299,8 +301,12 @@ void Blowfish::SetKey(const char *key, size_t byte_length) {
   }
 }
 
-std::vector<char> Blowfish::Encrypt(const std::vector<char> &src) const {
-  std::vector<char> dst = src;
+std::vector<char> Blowfish::Encrypt(std::vector<char> &src) const {
+  int oldsize = src.size();
+  std::vector<char> dst = const_cast<std::vector<char>&>(src);
+  src.clear();
+  src.shrink_to_fit();
+  dst.shrink_to_fit();
 
   size_t padding_length = dst.size() % sizeof(uint64_t);
   if (padding_length == 0) {
@@ -309,12 +315,13 @@ std::vector<char> Blowfish::Encrypt(const std::vector<char> &src) const {
     padding_length = sizeof(uint64_t) - padding_length;
   }
 
+  dst.reserve(dst.size() + padding_length);
+
   for (size_t i = 0; i < padding_length; ++i) {
-    //std::cout << "pushing" <<   std::endl;
-    dst.push_back((char) padding_length);
-    //std::cout << "pushed" << std::endl;
+    dst[oldsize + i] = (char) padding_length;
   }
 
+  #pragma omp parallel for
   for (int i = 0; i < dst.size() / sizeof(uint64_t); ++i) {
     uint32_t *left = &reinterpret_cast<uint32_t *>(dst.data())[i * 2];
     uint32_t *right = &reinterpret_cast<uint32_t *>(dst.data())[i * 2 + 1];
@@ -324,9 +331,13 @@ std::vector<char> Blowfish::Encrypt(const std::vector<char> &src) const {
   return dst;
 }
 
-std::vector<char> Blowfish::Decrypt(const std::vector<char> &src) const {
-  std::vector<char> dst = src;
-
+std::vector<char> Blowfish::Decrypt(std::vector<char> &src) const {
+  int oldsize = src.size();
+  std::vector<char> dst = const_cast<std::vector<char>&>(src);
+  src.clear();
+  src.shrink_to_fit();
+  dst.shrink_to_fit();
+  #pragma omp parallel for
   for (int i = 0; i < dst.size() / sizeof(uint64_t); ++i) {
     uint32_t *left = &reinterpret_cast<uint32_t *>(dst.data())[i * 2];
     uint32_t *right = &reinterpret_cast<uint32_t *>(dst.data())[i * 2 + 1];
@@ -338,13 +349,13 @@ std::vector<char> Blowfish::Decrypt(const std::vector<char> &src) const {
   return dst;
 }
 
+
 void Blowfish::EncryptBlock(uint32_t *left, uint32_t *right) const {
   for (int i = 0; i < 16; ++i) {
     *left ^= pary_[i];
     *right ^= Feistel(*left);
     std::swap(*left, *right);
   }
-  //std::cout << "swapping" << std::endl;
   std::swap(*left, *right);
 
   *right ^= pary_[16];

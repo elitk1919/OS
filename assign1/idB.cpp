@@ -1,3 +1,4 @@
+#define DEBUG
 #include "ServerSocket.h"
 #include "blowfish.h"
 #include "util.h"
@@ -8,6 +9,10 @@
 
 using namespace std;
 using namespace util;
+
+Socket s;
+Blowfish priv;
+Blowfish session;
 
 string process(vector<char> v) {
     auth_pkt p;
@@ -21,30 +26,82 @@ string process(vector<char> v) {
             temp.push_back(c ^ 0xFF);
         }
     }
-    //return temp;
+}
+
+void recieveFile(string fname) {
+    vector<char> decrypted, out;
+    uint64_t totalFileSize = s.readbytes<uint64_t>();
+    s.writebytes<char>('c');
+    uint64_t currentFileSize = 0;
+    cout << "File transfer of size " << totalFileSize << endl;
+    ofstream outfile(fname, ios::binary);
+    timer t;
+    t.start();
+    while(currentFileSize < totalFileSize) {
+        cout << "reading" << endl;
+        out = s.readdata();
+        decrypted = session.Decrypt(out);
+        outfile.write(&decrypted[0], decrypted.size());
+        currentFileSize += decrypted.size();
+        cout << currentFileSize << endl;
+        out.clear();
+        out.shrink_to_fit();
+        decrypted.clear();
+        decrypted.shrink_to_fit();
+    }
+    outfile.close();
+    cout << "Completed in " << t.stop() << "seconds" << endl;
 }
 
 int main(int argc, char* argv[]) {
-    string privatekey = "bsprivatekey";
-#ifdef PROD
-    cout << "Emter idB private key: "
-    getline(con, privatekey);
-#endif
+    string privatekey;
+    unsigned long nonce;
+//#ifdef PROD
+    cout << "Enter idB private key: ";
+    getline(cin, privatekey);
+    cout << "Enter Nonce: ";
+    cin >> nonce;
+    cin.ignore();
+    cout << nonce << endl;
+//#endif
     ServerSocket* ss = new ServerSocket(9421);
-    Socket s = ss->acceptCli();
-    Blowfish priv(str2Vec(privatekey));
-    vector<char> encoded = priv.Decrypt(s.readdata());
+    s = ss->acceptCli();
+    priv = Blowfish(str2Vec(privatekey));
+    vector<char> data = s.readdata();
+    vector<char> encoded = priv.Decrypt(data);
     string sessionkey = process(encoded);
-    cout << "\n\n\t\tSession: " << sessionkey << endl;
-    Blowfish sess(str2Vec(sessionkey));
-    unsigned long nonce = generateNonce();
-    s.writedata(sess.Encrypt(long2Vec(nonce)));
+    cout << "Session key: " << sessionkey << endl;
+    session = Blowfish(str2Vec(sessionkey));
+    vector<char> vecnonce = long2Vec(nonce); 
+    s.writedata(session.Encrypt(vecnonce));
     long fNonce = f(nonce);
     while(!s.hasqueue());
-    long recievedfNonce = vec2Long(sess.Decrypt(s.readdata()));
-    if (recievedfNonce == fNonce) cout << "authenticated" << endl;
-    //while(!s.hasqueue());
-    vector<char> out = sess.Decrypt(s.readdata());
-    //bf_private.SetIV(nonce);
-    vec2File(out, "/tmp/1g");
+    data = s.readdata();
+    long recievedfNonce = vec2Long(session.Decrypt(data));
+    if (recievedfNonce == fNonce) { 
+        cout << "Session Authenticated" << endl;
+    } else { 
+        cout << "Authentication failed" << endl;
+        return 0;
+    }
+    char c = ' ';
+    while(c != (char) TERMINATE){
+        c = s.readbytes<char>();
+        if (c == FTP) {
+            string fname;
+            cout << "Output file name: ";
+            getline(cin, fname);
+            recieveFile(fname);
+        } else if (c == MESSAGE) {
+            vector<char> encMessage = s.readdata();
+            cout << "Encrypted message: " << str2Hex(vec2Str(encMessage)) << endl;
+            vector<char> decryptedMessage = session.Decrypt(encMessage);
+            cout << "Messsage recieved: " << endl;
+            cout << "\t" << str2Hex(vec2Str(decryptedMessage)) << " (hex)" << endl;
+            cout << "\t" << vec2Str(decryptedMessage) << " (plaintext)" << endl;
+        } else if (c == (char) TERMINATE) {
+            s.shut();
+            return 0;
+        }
+    }
 }

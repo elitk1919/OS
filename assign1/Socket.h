@@ -1,4 +1,4 @@
-#define DEBUG
+//#define DEBUG
 #define WRITE_SIZE 8192
 
 #include <sys/ioctl.h>
@@ -37,7 +37,7 @@ public:
 	} status;
 	
 
-	//Socket();
+	Socket();
 	Socket(int sock, sockaddr_in add);
 	Socket(const Socket&);
 	Socket(char* host, int portno);
@@ -54,6 +54,7 @@ public:
     bool hasqueue();
     void writedata(std::vector<char>);
     std::vector<char> readdata();
+    void shut();
     void sendbytes(char*, int);
     char* getbytes(char*, int);
 

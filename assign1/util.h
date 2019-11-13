@@ -6,15 +6,30 @@
 #include <vector>
 #include <fstream>
 #include <ctime>
+#include <iterator> 
+#include <iostream>
 #include <cstring>
+#include <chrono>
 
 namespace util {
+
+    struct timer {
+        std::chrono::high_resolution_clock::time_point starttime;
+        std::chrono::high_resolution_clock::time_point stoptime;
+        timer();
+        void start();
+        double stop();    
+    };
+
     enum bf_stat { // enum to hold append marks for blowfish
         REQ,
         NONCE,
         ENC,
         KEY,
-        ID
+        ID,
+        FTP,
+        MESSAGE,
+        TERMINATE
     };
 
     struct auth_pkt {

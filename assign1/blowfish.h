@@ -15,13 +15,14 @@
 #include <stdint.h>
 #include <cstddef>
 #include <vector>
+#include <thread>
 
 class Blowfish {
 public:
+  Blowfish();
   Blowfish(const std::vector<char> &key);
-  std::vector<char> Encrypt(const std::vector<char> &src) const;
-  std::vector<char> Decrypt(const std::vector<char> &src) const;
-
+  std::vector<char> Encrypt(std::vector<char> &src) const;
+  std::vector<char> Decrypt(std::vector<char> &src) const;
 private:
   void SetKey(const char *key, size_t byte_length);
   void EncryptBlock(uint32_t *left, uint32_t *right) const;

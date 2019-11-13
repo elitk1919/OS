@@ -14,6 +14,8 @@ bool Socket::connected() {
 	}
 }
 
+Socket::Socket(){}
+
 Socket::Socket(int sock, sockaddr_in add){ //constructor for server socket accept
 	this->fd = sock;
 	this->addr = add;
@@ -84,14 +86,9 @@ std::string Socket::readstring(){
 	memset(buf, '\0', 1024);
     char c = ' ';
     int i = 0;
-    //ile (c != '\0') {
 	int res = recv(this->fd, buf, 1024, 0);
-    //buf[i] = c;
 	if (res < 0) throw std::runtime_error("Error on read");
-    //i++; 
-    //}
 	std::string s = buf;
-    //std::cout << s.size() << std::endl;
 	return s;
 }
 
@@ -99,14 +96,7 @@ void Socket::setstatus(status s){ //ends OOB status message
 	int res = send(this->fd, &s, 1, MSG_OOB);
 	if (res < 0) throw std::runtime_error("Error setting status");
 }
-/*
-Socket::status Socket::getstatus(){ //for recieving an OOB status message, can be send while the stream is full with priority
-	unsigned char buf;
-	int res = recv(this->fd, &buf, 1, MSG_OOB);
-	if (res < 0) return Socket::NOSTATUS;
-	return (Socket::status) buf;
-}
-*/
+
 Socket& Socket::operator<< (std::string s){ // for writing strings to the socket
 	write(this->fd, s.c_str(), s.length());
     //write(this->fd, '\0', 1);
@@ -116,7 +106,6 @@ Socket& Socket::operator<< (std::string s){ // for writing strings to the socket
 Socket& Socket::operator<< (binarystring s){ // for writing strings to the socket
 	write(this->fd, s.data.c_str(), s.length);
     //write(this->fd, '\0', 1);
-    std::cout << s.length << std::endl;
 	return *this;
 }
 
@@ -136,7 +125,7 @@ void Socket::writedata(std::vector<char> data) {
 #endif
         return;
     } else {
-        std::cout << "Handshake complete" << std::endl;
+        //std::cout << "Handshake complete" << std::endl;
     }    
     this->writebytes<uint64_t>(fsize); //write file size to client 
     uint8_t cli_res = this->readbytes<uint8_t>(); //wait for response
@@ -208,7 +197,10 @@ void Socket::writedata(std::vector<char> data) {
 
 std::vector<char> Socket::readdata() {
     
-    if (this->readbytes<uint8_t>() != FTP_INIT) return std::vector<char>(); //return false on bad handshake
+    if (this->readbytes<uint8_t>() != FTP_INIT) {
+ //       std::cout << "ahhhhh" << std::endl;
+        return std::vector<char>(); //return false on bad handshake
+    }
     else this->writebytes<uint8_t>(FTP_INIT);//write proto back st sender
 
     uint64_t fsize = this->readbytes<uint64_t>(); // read size and send server confirmation
@@ -270,14 +262,17 @@ std::vector<char> Socket::readdata() {
     }
     this->writebytes<uint8_t>(FTP_CLOSE);
     std::vector<char> v;
-    for (int i = 0; i < bytes_recvd; i++) 
-        v.push_back(arr[i]);
+    v.reserve(bytes_recvd);
+    //for (int i = 0; i < bytes_recvd; i++) 
+    //    v[i] = arr[i];
+    v.assign(arr, arr + bytes_recvd);
     delete[] arr;
     return v;
 }
 
-Socket::~Socket() {
-    std::cout << "Closing socket" << std::endl;
-	close(this->fd);
+void Socket::shut() {
+    close(this->fd);
 }
+
+Socket::~Socket() {}
 

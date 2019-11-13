@@ -4,29 +4,51 @@
 #endif
 using namespace std;
 
+util::timer::timer(){}
+void util::timer::start() {
+    this->starttime = std::chrono::high_resolution_clock::now();
+}
+
+double util::timer::stop() {
+    this->stoptime = std::chrono::high_resolution_clock::now();
+     return (double) std::chrono::duration_cast<std::chrono::microseconds>(stoptime - starttime).count() / 1000000;
+}
+
 std::vector<char> util::file2Vec(std::string filename) {
-    ifstream in(filename, ios::binary);
+    ifstream in(filename, ios::binary | ios::app);
     in.seekg(0, ios::end);
     uint64_t size = in.tellg();
     in.seekg(0, ios::beg);
+    std::cout << size << std::endl;
     char* data = new char[size];
-    vector<char> v;
+    
+    //v.reserve(size);
+    //std::cout << "Allocated" << std::endl;
+    in.read(data, size);
+    //v.insert(v.begin(), istream_iterator<char>(in), istream_iterator<char>());
     in.close();
-    for (int i = 0; i < size; i++) {
-        v.push_back(data[i]);
-    }
+    vector<char> v;
+    v.reserve(size);
+    //for (int i = 0; i < size; i++) {
+    //    v[i] = data[i];
+    //}
+    v.assign(data, data + size);
     delete[] data; 
     return v;
 }
 
 void util::vec2File(std::vector<char> out, std::string fname) {
     ofstream fout(fname, ios::binary);
-    //size_t size = out.size();
-    //char* data = new data[size]
-    //memcpy(&data, '\0', size);
+    size_t size = out.size();
+    //char* data = new char[size];
+    //memcpy(&data, out.data(), size);
     //data = out.data();
-    for (char &c : out) fout.write(&c, 1);
+    //r (int i = 0 ; i < out.size(); i++) {
+    fout.write(&out[0], size);
+    //
+    //copy(out.begin(), out.end(), ostream_iterator<char>(fout));
     fout.close();
+    //delete[] data;
 }
 
 std::string util::str2Hex(std::string s) {

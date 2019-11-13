@@ -7,6 +7,8 @@
 using namespace std;
 using namespace util;
 
+// SERVER!!!
+
 string parseRequest(Socket* s) {
     string request = "";
     char c = ' ';
@@ -16,7 +18,12 @@ string parseRequest(Socket* s) {
     }
     return request;
 }
-
+/*
+ * This function crafts the response to idA's request for a session key,
+ * using enums defined in util.h to append portions of the message with 
+ * status chars. To differentiate from other values equal with these chars,
+ * every character is masked, except for the status chars.
+ */
 vector<char> createResponse(Blowfish a, Blowfish b, 
                                     string sess, string request, 
                                     unsigned long non) {
@@ -27,9 +34,7 @@ vector<char> createResponse(Blowfish a, Blowfish b,
 
     vector<char> vec;
     vector<char> vec2; // used for B's encrypted message  
-    //int index = 0;
     for (char& c : sess) {
-        //cout << c;
         c = c ^ 0xFF;
         vec.push_back(c);
         vec2.push_back(c);
@@ -49,35 +54,23 @@ vector<char> createResponse(Blowfish a, Blowfish b,
 
     nonce_convert nc;
     nc.l = (uint64_t) non;
-    cout << "here" << non << " " << nc.l << endl;
     for (int i = 0; i < sizeof(unsigned long); i++) {
         if (nc.dat[i] == '\0') {
              break;
         }
         vec.push_back(nc.dat[i] ^ 0XFF);
-        cout << "I: " << i << " " << nc.dat[i] << endl;
-        
     }
     vec.push_back((char) ENC);
     for (char& c : vec2) {
         vec.push_back(c ^ 0xFF);   
     }
-    //ut << "Decrypted: " << decB << endl;
     return a.Encrypt(vec);
-    //cout << enc << endl;
-    //string encA = "";
-    //cout << "FUUUCK " << a.Decrypt_CBC(enc) << endl;
-    //for (int i = 0; i < vec.size(); i++)
-    //  encA[i] = vec[i];
-    
-    //cout << enc.length() << endl;
-    //return enc;
 }
 
 int main (int argc, char* argv[]) {
     ServerSocket ss(9421);
     Socket* so = new Socket(ss.acceptCli());
-#ifdef PROD
+//#ifdef PROD
     string sess_key, idA_key, idB_key;
     cout << "Enter session key: ";
     getline(cin, sess_key);
@@ -85,16 +78,14 @@ int main (int argc, char* argv[]) {
     getline(cin, idA_key);
     cout << "enter idB key: ";
     getline(cin, idB_key);
-#else
-    string sess_key = "session";
-    string idA_key = "private";
-    string idB_key = "bsprivatekey";
-#endif
+//#else
+    //string sess_key = "session";
+    //string idA_key = "private";
+    //string idB_key = "bsprivatekey";
+//#endif
     while(!so->hasqueue());
     string req = parseRequest(so);
-    //string req = "empty";
     unsigned long nonce = so->readbytes<unsigned long>();
-    //unsigned long nonce = 0;
     cout << "Recieved from idA :" << endl;
     cout << "\t" << req << endl;
     cout << "\tnonce: " << nonce << endl;
